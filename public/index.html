@@ -203,13 +203,13 @@
 
       <!-- Interactive Focus Modes -->
       <div class="hero-modes-wrapper" role="tablist" aria-label="انتخاب حوزه تمرکز">
-        <button type="button" class="hero-mode-btn active" id="hero-focus-btn-1" data-mode="cloud" role="tab" aria-selected="true">
+        <button type="button" class="hero-mode-btn active" id="hero-focus-btn-1" data-mode="cloud" role="tab" aria-selected="true" aria-controls="hero-focus-box" aria-label="میزبانی ابری رایگان">
           <span>☁️ میزبانی ابری رایگان</span>
         </button>
-        <button type="button" class="hero-mode-btn" id="hero-focus-btn-2" data-mode="tg" role="tab" aria-selected="false">
+        <button type="button" class="hero-mode-btn" id="hero-focus-btn-2" data-mode="tg" role="tab" aria-selected="false" aria-controls="hero-focus-box" aria-label="مدیریت کامل از تلگرام">
           <span>🤖 مدیریت کامل از تلگرام</span>
         </button>
-        <button type="button" class="hero-mode-btn" id="hero-focus-btn-3" data-mode="env" role="tab" aria-selected="false">
+        <button type="button" class="hero-mode-btn" id="hero-focus-btn-3" data-mode="env" role="tab" aria-selected="false" aria-controls="hero-focus-box" aria-label="شخصی‌سازی با env">
           <span>🛠 شخصی‌سازی با .env</span>
         </button>
       </div>
@@ -526,10 +526,10 @@
             <button type="button" id="faq-search-clear" class="faq-search-clear" style="display:none;" aria-label="پاک کردن جستجو">&times;</button>
           </div>
           <div class="faq-chips" role="tablist" aria-label="دسته‌بندی سوالات">
-            <button type="button" class="faq-chip active" data-faq-cat="all">✨ همه سوالات</button>
-            <button type="button" class="faq-chip" data-faq-cat="setup">🚀 راه‌اندازی</button>
-            <button type="button" class="faq-chip" data-faq-cat="tg">🤖 تلگرام</button>
-            <button type="button" class="faq-chip" data-faq-cat="cf">☁️ کلودفلر</button>
+            <button type="button" class="faq-chip active" data-faq-cat="all" role="tab" aria-selected="true" aria-label="همه سوالات">✨ همه سوالات</button>
+            <button type="button" class="faq-chip" data-faq-cat="setup" role="tab" aria-selected="false" aria-label="سوالات راه‌اندازی">🚀 راه‌اندازی</button>
+            <button type="button" class="faq-chip" data-faq-cat="tg" role="tab" aria-selected="false" aria-label="سوالات تلگرام">🤖 تلگرام</button>
+            <button type="button" class="faq-chip" data-faq-cat="cf" role="tab" aria-selected="false" aria-label="سوالات کلودفلر">☁️ کلودفلر</button>
           </div>
         </div>
 
