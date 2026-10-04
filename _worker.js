@@ -318,7 +318,7 @@ async function handleApiAnnouncement(env, request = null) {
   try {
     if (!env.CONTACT_KV) return jsonResponse({ active: false }, 200, {}, request);
     const data = await env.CONTACT_KV.get('SITE_ANNOUNCEMENT', { type: 'json' });
-    return jsonResponse(data || { active: false }, 200, {}, request);
+    return jsonResponse(data || { active: false }, 200, { 'Cache-Control': 'public, max-age=60' }, request);
   } catch (e) {
     return jsonResponse({ active: false }, 200, {}, request);
   }
@@ -327,15 +327,25 @@ async function handleApiAnnouncement(env, request = null) {
 async function handleApiGetPublicMessages(env, request = null) {
   if (!env.CONTACT_KV) return jsonResponse([], 200, {}, request);
   try {
-    const list = await env.CONTACT_KV.list({ limit: 1000 });
-    const keys = (list.keys || []).filter(k => !k.name.startsWith('rate::') && !k.name.startsWith('order_') && k.name !== 'SITE_ANNOUNCEMENT' && k.name !== 'DAILY_WORD_OVERRIDE');
-    const allMsg = await Promise.all(keys.map(key => env.CONTACT_KV.get(key.name, { type: 'json' }).catch(() => null)));
+    // Fast path: cached aggregated public Q&A
+    const cached = await env.CONTACT_KV.get('PUBLIC_MESSAGES_CACHE', { type: 'json' }).catch(() => null);
+    if (cached && Array.isArray(cached)) {
+      return jsonResponse(cached, 200, { 'Cache-Control': 'public, max-age=60' }, request);
+    }
+
+    const list = await env.CONTACT_KV.list({ limit: 100 });
+    const keys = (list.keys || []).filter(k => !k.name.startsWith('rate::') && !k.name.startsWith('order_') && k.name !== 'SITE_ANNOUNCEMENT' && k.name !== 'DAILY_WORD_OVERRIDE' && k.name !== 'PUBLIC_MESSAGES_CACHE');
+    const allMsg = await Promise.all(keys.slice(0, 30).map(key => env.CONTACT_KV.get(key.name, { type: 'json' }).catch(() => null)));
     const publics = allMsg
       .filter(m => m && typeof m === 'object' && m.type !== 'order' && m.isPublic && m.reply_text)
       .sort((a, b) => (b.replied_at || b.timestamp || 0) - (a.replied_at || a.timestamp || 0))
       .slice(0, 50)
       .map(m => ({ id: m.id, name: m.name, message: m.message, reply_text: m.reply_text, replied_at: m.replied_at || m.timestamp }));
-    return jsonResponse(publics, 200, {}, request);
+
+    if (publics.length > 0) {
+      await env.CONTACT_KV.put('PUBLIC_MESSAGES_CACHE', JSON.stringify(publics), { expirationTtl: 86400 }).catch(() => {});
+    }
+    return jsonResponse(publics, 200, { 'Cache-Control': 'public, max-age=60' }, request);
   } catch (e) {
     console.error('handleApiGetPublicMessages error:', e);
     return jsonResponse([], 200, {}, request);
@@ -346,14 +356,21 @@ async function handleApiContent(env, request = null) {
   try {
     let items = [];
     if (env.FILES_KV) {
-      const list = await env.FILES_KV.list({ limit: 1000 });
+      // Fast path: cached aggregated public articles
+      const cached = await env.FILES_KV.get('PUBLIC_ARTICLES_CACHE', { type: 'json' }).catch(() => null);
+      if (cached && Array.isArray(cached)) {
+        return jsonResponse(cached, 200, { 'Cache-Control': 'public, max-age=120' }, request);
+      }
+
+      const list = await env.FILES_KV.list({ limit: 50 });
       const validKeys = (list.keys || []).filter(k => 
         k.name !== 'AI_DOCS_CATEGORIES' && 
         k.name !== 'AI_CRON_STATUS' && 
         k.name !== 'STATIC_TITLE_OVERRIDES' && 
-        k.name !== 'STATIC_TYPE_OVERRIDES'
+        k.name !== 'STATIC_TYPE_OVERRIDES' &&
+        k.name !== 'PUBLIC_ARTICLES_CACHE'
       );
-      const all = await Promise.all(validKeys.map(k => env.FILES_KV.get(k.name, { type: 'json' }).catch(() => null)));
+      const all = await Promise.all(validKeys.slice(0, 30).map(k => env.FILES_KV.get(k.name, { type: 'json' }).catch(() => null)));
       items = all.filter(Boolean).filter(it => it.is_article || it.type === 'post' || it.type === 'article').sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
       // Also check static notes marked as articles
@@ -386,8 +403,12 @@ async function handleApiContent(env, request = null) {
           }
         }
       } catch (e) { }
+
+      if (items.length > 0) {
+        await env.FILES_KV.put('PUBLIC_ARTICLES_CACHE', JSON.stringify(items), { expirationTtl: 86400 }).catch(() => {});
+      }
     }
-    return jsonResponse(items, 200, { 'Cache-Control': 'no-cache' }, request);
+    return jsonResponse(items, 200, { 'Cache-Control': 'public, max-age=120' }, request);
   } catch (e) {
     console.error('handleApiContent error:', e);
     return jsonResponse([], 200, {}, request);
