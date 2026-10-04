@@ -1,4 +1,3 @@
-
 (function () {
     'use strict';
 
@@ -26,28 +25,35 @@
             document.querySelectorAll('.reveal').forEach(el => el.classList.add('active'));
         }
 
-        // --- 3D Tilt & Spotlight Tracking for Bento & Service Cards ---
+        // --- 3D Tilt & Spotlight Tracking for Bento & Service Cards (Optimized with RAF & Touch Guard) ---
         try {
-            const cardsToTrack = document.querySelectorAll('.bento-card, .service-card');
-            cardsToTrack.forEach(card => {
-                card.addEventListener('mousemove', (e) => {
-                    const rect = card.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    card.style.setProperty('--mouse-x', `${x}px`);
-                    card.style.setProperty('--mouse-y', `${y}px`);
-                    if (card.classList.contains('bento-card') && window.innerWidth >= 1040) {
-                        const rotateX = ((y - rect.height / 2) / (rect.height / 2)) * -4;
-                        const rotateY = ((x - rect.width / 2) / (rect.width / 2)) * 4;
-                        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.01, 1.01, 1.01)`;
-                    }
-                }, { passive: true });
-                card.addEventListener('mouseleave', () => {
-                    if (card.classList.contains('bento-card')) {
-                        card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
-                    }
+            if (window.matchMedia('(hover: hover)').matches) {
+                const cardsToTrack = document.querySelectorAll('.bento-card, .service-card');
+                cardsToTrack.forEach(card => {
+                    let rafId = null;
+                    card.addEventListener('mousemove', (e) => {
+                        if (rafId) cancelAnimationFrame(rafId);
+                        rafId = requestAnimationFrame(() => {
+                            const rect = card.getBoundingClientRect();
+                            const x = e.clientX - rect.left;
+                            const y = e.clientY - rect.top;
+                            card.style.setProperty('--mouse-x', `${x}px`);
+                            card.style.setProperty('--mouse-y', `${y}px`);
+                            if (card.classList.contains('bento-card') && window.innerWidth >= 1040) {
+                                const rotateX = ((y - rect.height / 2) / (rect.height / 2)) * -4;
+                                const rotateY = ((x - rect.width / 2) / (rect.width / 2)) * 4;
+                                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.01, 1.01, 1.01)`;
+                            }
+                        });
+                    }, { passive: true });
+                    card.addEventListener('mouseleave', () => {
+                        if (rafId) cancelAnimationFrame(rafId);
+                        if (card.classList.contains('bento-card')) {
+                            card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+                        }
+                    });
                 });
-            });
+            }
         } catch (e) {}
 
         const isMobile = window.innerWidth < 768;
@@ -745,8 +751,12 @@
 
             faqChips.forEach(chip => {
                 chip.addEventListener('click', () => {
-                    faqChips.forEach(c => c.classList.remove('active'));
+                    faqChips.forEach(c => {
+                        c.classList.remove('active');
+                        c.setAttribute('aria-selected', 'false');
+                    });
                     chip.classList.add('active');
+                    chip.setAttribute('aria-selected', 'true');
                     currentFaqCategory = chip.getAttribute('data-faq-cat') || 'all';
                     filterFaqs();
                 });
@@ -1084,6 +1094,7 @@
 
             document.querySelectorAll('.social-pills .pill-interactive').forEach(pill => {
                 pill.addEventListener('click', (e) => {
+                    e.preventDefault();
                     const targetCat = pill.getAttribute('data-filter-target');
                     if (targetCat) {
                         filterServices(targetCat);
@@ -1110,6 +1121,3 @@
         initApp();
     }
 })();
-
-
-
